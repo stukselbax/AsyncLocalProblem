@@ -1,21 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Jaeger;
-using Jaeger.Samplers;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using OpenTracing.Util;
-
-namespace SpanHasAlreadyFinished
+﻿namespace SpanHasAlreadyFinished
 {
+    using Data;
+    using Jaeger;
+    using Jaeger.Samplers;
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Hosting;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
+    using OpenTracing.Util;
+
     public class Startup
     {
         public Startup(IConfiguration configuration, ILoggerFactory loggerFactory)
@@ -33,14 +29,15 @@ namespace SpanHasAlreadyFinished
             var tracer = new Tracer.Builder("Problem")
             .WithLoggerFactory(LoggerFactory)
             .WithSampler(new ConstSampler(true))
-            .WithTraceId128Bit()
+            // You can play with this toys to get more details.
+            // .WithScopeManager(new AsyncLocalScopeManagerToy(LoggerFactory))
             .Build();
 
             GlobalTracer.Register(tracer);
 
             services
                 .AddDbContextPool<JaegerDbContext>(o =>
-                o.UseSqlServer("Server=.\\SQLEXPRESS;Integrated Security=true;Database=Sample;Trusted_Connection=True;Connect Timeout=30;"))
+                o.UseSqlServer(SR.ConnectionString))
                 .AddSingleton(tracer)
                 .AddOpenTracing()
                 .AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
@@ -58,7 +55,7 @@ namespace SpanHasAlreadyFinished
 
             using (var s = app.ApplicationServices.CreateScope())
             {
-                s.ServiceProvider.GetRequiredService<JaegerDbContext>().Database.EnsureCreated();
+                s.ServiceProvider.GetRequiredService<JaegerDbContext>().Database.Migrate();
             }
         }
     }
