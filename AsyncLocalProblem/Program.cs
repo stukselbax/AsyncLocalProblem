@@ -148,7 +148,7 @@
 
                 disposed = true;
 
-                WriteLine("Change manager status to previous: {0}", prevStatus.name);
+                WriteLine("Change manager status to previous: {0}", prevStatus?.name);
                 manager.Status = prevStatus;
             }
 
