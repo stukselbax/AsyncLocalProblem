@@ -26,6 +26,8 @@
                 var dbContext = services.GetRequiredService<JaegerDbContext>();
 
                 var dates = await dbContext.Dates.ToListAsync();
+
+
             }
             catch (Exception e)
             {
@@ -40,11 +42,25 @@
 
         internal sealed class DiagnosticManager : IObserver<DiagnosticListener>
         {
-            private AsyncLocal<Disposable> status = new AsyncLocal<Disposable>();
+            private AsyncLocal<Disposable> status;
 
             public DiagnosticManager()
             {
+                status = new AsyncLocal<Disposable>(OnStatusChanged);
                 DiagnosticListener.AllListeners.Subscribe(this);
+            }
+
+            private void OnStatusChanged(AsyncLocalValueChangedArgs<Disposable> args)
+            {
+                WriteLine(
+                        "AsyncLocal<T> changed {0} from: {1} to {2}",
+                        args.ThreadContextChanged ? "by context" : "by setter",
+                        args.PreviousValue?.ToString() ?? "<null>",
+                        args.CurrentValue?.ToString() ?? "<null>");
+                if (args.CurrentValue?.ToString().EndsWith("WriteCommandBefore") == true && args.CurrentValue?.disposed == true)
+                {
+                    WriteLine(Environment.StackTrace);
+                }
             }
 
             public Disposable Status
@@ -128,7 +144,7 @@
             private readonly DiagnosticManager manager;
             private readonly string name;
             private Disposable prevStatus;
-            private bool disposed = false;
+            public bool disposed = false;
 
             public Disposable(DiagnosticManager manager, string name)
             {
@@ -154,7 +170,7 @@
 
             public override string ToString()
             {
-                return "current status: " + name + ". Restore to: " + prevStatus?.name;
+                return name;
             }
         }
     }
